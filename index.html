@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>COVID-19 Inequality Investigation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0b1220;
+      --card: #0d1628;
+      --muted: #9fb3c8;
+      --accent: #5ce1e6;
+      --accent-2: #7c5dff;
+      --text: #e8f0ff;
+      --border: rgba(255, 255, 255, 0.08);
+      --glow: rgba(92, 225, 230, 0.18);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: 'Space Grotesk', 'Segoe UI', sans-serif;
+      background: radial-gradient(circle at 18% 18%, rgba(92, 225, 230, 0.14), transparent 34%),
+                  radial-gradient(circle at 82% 16%, rgba(124, 93, 255, 0.20), transparent 36%),
+                  linear-gradient(180deg, rgba(13, 22, 40, 0.92), rgba(11, 18, 32, 0.96)),
+                  var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+    .header-spacer { height: 90px; }
+    .watermark { position: fixed; right: 14px; bottom: 12px; opacity: 0.18; font-weight: 700; letter-spacing: 0.2em; color: var(--text); pointer-events: none; font-size: 14px; text-transform: uppercase; }
+
+    a { color: var(--accent); text-decoration: none; }
+
+    header {
+      padding: 32px 24px 12px;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      backdrop-filter: blur(16px);
+      background: rgba(11, 18, 32, 0.9);
+      border-bottom: 1px solid var(--border);
+      z-index: 12;
+      transition: padding .18s ease, background .2s ease, box-shadow .2s ease, transform .2s ease;
+      transform: translateY(0);
+    }
+    header.show { transform: translateY(0); box-shadow: 0 12px 24px rgba(0,0,0,.22); }
+    header.hidden { transform: translateY(-100%); box-shadow: none; }
+
+    .hero {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: grid;
+      gap: 12px;
+      position: relative;
+      padding: 8px 0 6px;
+    }
+
+    .hero::after {
+      content: '';
+      position: absolute;
+      inset: 12% -6% auto auto;
+      width: 180px;
+      height: 180px;
+      background: radial-gradient(circle, rgba(124, 93, 255, 0.22), transparent 60%);
+      filter: blur(18px);
+      opacity: 0.9;
+      pointer-events: none;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 13px;
+      background: rgba(92, 225, 230, 0.12);
+      color: var(--accent);
+      border: 1px solid rgba(92, 225, 230, 0.28);
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(34px, 4.2vw, 50px);
+      line-height: 1.05;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+
+    .lede {
+      margin: 4px 0 0;
+      color: var(--muted);
+      max-width: 900px;
+      font-size: 17px;
+      line-height: 1.6;
+    }
+
+    nav {
+      max-width: 1100px;
+      margin: 16px auto 0;
+      display: grid;
+      gap: 12px;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      max-height: 0;
+      overflow: hidden;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(-6px);
+      transition: max-height .18s ease, opacity .18s ease, transform .18s ease;
+    }
+
+    .nav-chip {
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text);
+      padding: 12px 16px;
+      border-radius: 14px;
+      text-align: center;
+      cursor: pointer;
+      transition: transform 140ms ease, box-shadow 180ms ease, border-color 180ms ease;
+      font-weight: 700;
+      font-size: 15px;
+      letter-spacing: 0.01em;
+      background-image: linear-gradient(135deg, rgba(92, 225, 230, 0.16), rgba(124, 93, 255, 0.12));
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    }
+    .nav-chip:hover { transform: translateY(-3px); box-shadow: 0 14px 32px rgba(0, 0, 0, 0.35), 0 0 0 1px var(--border), 0 10px 28px var(--glow); border-color: rgba(92, 225, 230, 0.45); }
+
+    main {
+      max-width: 1200px;
+      margin: 28px auto 90px;
+      padding: 0 24px 28px;
+      display: grid;
+      gap: 18px;
+    }
+
+    header.show nav,
+    header:hover nav { max-height: 520px; opacity: 1; pointer-events: auto; transform: translateY(0); }
+
+    header.collapsed nav { max-height: 0; opacity: 0; pointer-events: none; transform: translateY(-6px); margin-top: 0; }
+    header.collapsed:hover { padding: 24px 22px 12px; box-shadow: none; }
+    header.collapsed:hover nav { max-height: 520px; opacity: 1; pointer-events: auto; transform: translateY(0); }
+
+    section.card {
+      background: linear-gradient(150deg, rgba(18, 27, 46, 0.95), rgba(12, 18, 33, 0.92));
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 24px;
+      box-shadow: 0 22px 48px rgba(0, 0, 0, 0.38), 0 0 0 1px rgba(255, 255, 255, 0.02);
+      transition: transform 140ms ease, box-shadow 180ms ease, border-color 180ms ease;
+    }
+    section.card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 28px 60px rgba(0, 0, 0, 0.40), 0 0 0 1px rgba(92, 225, 230, 0.10), 0 12px 34px var(--glow);
+      border-color: rgba(92, 225, 230, 0.14);
+    }
+
+    .section-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      padding-bottom: 10px;
+    }
+
+    .section-head h2 {
+      margin: 0;
+      font-size: 22px;
+      letter-spacing: -0.01em;
+      color: #f1f5ff;
+    }
+
+    .pill {
+      padding: 7px 12px;
+      border-radius: 999px;
+      background: rgba(92, 225, 230, 0.12);
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 700;
+      border: 1px solid rgba(92, 225, 230, 0.32);
+    }
+
+    article {
+      line-height: 1.6;
+      color: var(--text);
+    }
+
+    article h2, article h3, article h4, article h5 {
+      margin-top: 22px;
+      margin-bottom: 8px;
+    }
+
+    article p { color: var(--muted); }
+
+    pre {
+      background: #0c1529;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      overflow-x: auto;
+      color: #e5e7eb;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    code { font-family: 'SFMono-Regular', Consolas, Menlo, monospace; }
+
+    article img {
+      width: 100%;
+      max-width: 760px;
+      display: block;
+      margin: 12px auto;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1px solid var(--border);
+      margin: 12px 0;
+      font-size: 13px;
+    }
+
+    th, td {
+      padding: 8px;
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+
+    th { background: rgba(255, 255, 255, 0.04); color: var(--text); }
+
+    .status {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .alert {
+      background: rgba(245, 158, 11, 0.12);
+      color: #f8d99d;
+      border: 1px solid rgba(245, 158, 11, 0.28);
+      padding: 10px 12px;
+      border-radius: 10px;
+      font-size: 14px;
+      margin-top: 8px;
+    }
+
+    @media (max-width: 700px) {
+      header { padding: 22px 16px 10px; }
+      main { padding: 0 16px 18px; }
+      .section-head { flex-direction: column; align-items: flex-start; }
+      nav { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script>
+    // Landing page only; section pages are separate HTML files
+    const sections = [
+      { href: 'introduction.html', title: 'Introduction', detail: 'Context, goals, scope of the investigation.' },
+      { href: 'data-summary.html', title: 'Data Summary', detail: 'Sources, cleaning, quick visuals, t-SNE mention.' },
+      { href: 'hypothesis-1.html', title: 'Hypothesis 1', detail: 'India vs global COVID-19 outcomes and framing (includes its findings).' },
+      { href: 'hypothesis-2.html', title: 'Hypothesis 2', detail: 'State-level patterns (includes its findings, conclusion, and acknowledgements).' }
+    ];
+
+    const root = document.getElementById('root');
+    root.innerHTML = '';
+
+    const header = document.createElement('header');
+    const hero = document.createElement('div');
+    hero.className = 'hero';
+    hero.innerHTML = `
+      <span class="eyebrow">COVID-19 | Inequality & Impact</span>
+      <h1>Explore the investigation by section.</h1>
+      <p class="lede">Open any section as its own page. Each page fetches and renders only its slice of the original notebook for smoother, non-laggy viewing.</p>
+    `;
+    header.appendChild(hero);
+    root.appendChild(header);
+
+    const spacer = document.createElement('div');
+    spacer.className = 'header-spacer';
+    root.appendChild(spacer);
+
+    const watermark = document.createElement('div');
+    watermark.className = 'watermark';
+    watermark.textContent = 'YG';
+    root.appendChild(watermark);
+
+    const main = document.createElement('main');
+    const grid = document.createElement('div');
+    grid.style.display = 'grid';
+    grid.style.gridTemplateColumns = 'repeat(auto-fit, minmax(260px, 1fr))';
+    grid.style.gap = '16px';
+
+    sections.forEach((s) => {
+      const card = document.createElement('a');
+      card.href = s.href;
+      card.className = 'card';
+      card.style.textDecoration = 'none';
+      card.innerHTML = `
+        <div class="section-head">
+          <h2>${s.title}</h2>
+          <span class="pill">Open</span>
+        </div>
+        <p style="color: var(--muted); margin: 0;">${s.detail}</p>
+      `;
+      grid.appendChild(card);
+    });
+
+    main.appendChild(grid);
+    root.appendChild(main);
+
+    const headerEl = header;
+    let lastY = 0, upAccum = 0, downAccum = 0;
+    const syncNav = () => {
+      const y = window.scrollY;
+      const delta = y - lastY;
+      if (y < 40) {
+        headerEl.classList.add('show');
+        headerEl.classList.remove('hidden');
+        upAccum = 0;
+        downAccum = 0;
+      } else {
+        if (delta > 0) {
+          downAccum += delta;
+          upAccum = 0;
+        } else if (delta < 0) {
+          upAccum -= delta;
+          downAccum = 0;
+        }
+        if (downAccum > 14) {
+          headerEl.classList.add('hidden');
+          headerEl.classList.remove('show');
+        }
+        if (upAccum > 26) {
+          headerEl.classList.add('show');
+          headerEl.classList.remove('hidden');
+        }
+      }
+      lastY = y;
+      spacer.style.height = `${headerEl.offsetHeight}px`;
+    };
+    window.addEventListener('scroll', syncNav, { passive: true });
+    window.addEventListener('resize', () => spacer.style.height = `${headerEl.offsetHeight}px`);
+    syncNav();
+  </script>
+</body>
+</html>

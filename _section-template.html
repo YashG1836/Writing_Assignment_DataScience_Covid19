@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{TITLE}}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #0b1221;
+      --muted: #94a3b8;
+      --accent: #22d3ee;
+      --accent-2: #f59e0b;
+      --text: #e2e8f0;
+      --border: rgba(255, 255, 255, 0.08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Space Grotesk', 'Segoe UI', sans-serif;
+      background: radial-gradient(circle at 20% 20%, rgba(34, 211, 238, 0.12), transparent 30%),
+                  radial-gradient(circle at 80% 10%, rgba(245, 158, 11, 0.16), transparent 32%),
+                  radial-gradient(circle at 50% 80%, rgba(255, 255, 255, 0.06), transparent 28%),
+                  var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+    header { padding: 28px 20px 16px; }
+    .hero { max-width: 1080px; margin: 0 auto; display: grid; gap: 12px; }
+    .eyebrow { display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; background: rgba(34, 211, 238, 0.1); color: var(--accent); border: 1px solid var(--border); border-radius: 999px; font-size: 13px; font-weight: 600; letter-spacing: 0.01em; }
+    h1 { margin: 0; font-size: clamp(30px, 4vw, 44px); line-height: 1.1; font-weight: 700; }
+    .lede { margin: 2px 0 0; color: var(--muted); max-width: 900px; font-size: 17px; line-height: 1.6; }
+    nav { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+    .nav-chip { border: 1px solid var(--border); background: rgba(255, 255, 255, 0.03); color: var(--text); padding: 10px 12px; border-radius: 12px; text-align: center; cursor: pointer; font-weight: 600; font-size: 14px; text-decoration: none; }
+    main { max-width: 1080px; margin: 0 auto 72px; padding: 0 20px 20px; }
+    section.card { background: linear-gradient(160deg, rgba(15, 23, 42, 0.92), rgba(10, 14, 26, 0.9)); border: 1px solid var(--border); border-radius: 18px; padding: 22px; box-shadow: 0 18px 45px rgba(0, 0, 0, 0.35); }
+    .section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+    .section-head h2 { margin: 0; font-size: 21px; letter-spacing: -0.01em; }
+    .pill { padding: 6px 10px; border-radius: 999px; background: rgba(255, 255, 255, 0.05); color: var(--muted); font-size: 13px; border: 1px solid var(--border); }
+    article { line-height: 1.6; color: var(--text); }
+    article p { color: var(--muted); }
+    pre { background: #0c1529; border: 1px solid var(--border); border-radius: 12px; padding: 14px; overflow-x: auto; color: #e5e7eb; font-size: 13px; line-height: 1.5; }
+    code { font-family: 'SFMono-Regular', Consolas, Menlo, monospace; }
+    article img { width: 100%; max-width: 760px; display: block; margin: 12px auto; border-radius: 14px; border: 1px solid var(--border); }
+    table { width: 100%; border-collapse: collapse; border: 1px solid var(--border); margin: 12px 0; font-size: 13px; }
+    th, td { padding: 8px; border: 1px solid var(--border); color: var(--muted); }
+    th { background: rgba(255, 255, 255, 0.04); color: var(--text); }
+    .status { margin-top: 6px; color: var(--muted); font-size: 14px; }
+    .alert { background: rgba(245, 158, 11, 0.12); color: #f8d99d; border: 1px solid rgba(245, 158, 11, 0.28); padding: 10px 12px; border-radius: 10px; font-size: 14px; margin-top: 8px; }
+    @media (max-width: 720px) { nav { gap: 6px; } .section-head { flex-direction: column; align-items: flex-start; } }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script>
+    const loadScriptFallback = (urls) => new Promise((resolve, reject) => {
+      let idx = 0;
+      const next = () => {
+        if (idx >= urls.length) return reject(new Error('scripts failed'));
+        const s = document.createElement('script');
+        s.src = urls[idx++];
+        s.onload = () => resolve();
+        s.onerror = next;
+        document.head.appendChild(s);
+      };
+      next();
+    });
+
+    const sliceMarkdown = (raw, startToken, endToken) => {
+      if (!raw) return '';
+      const startIndex = startToken ? raw.indexOf(startToken) : 0;
+      const safeStart = startIndex >= 0 ? startIndex : 0;
+      const endIndex = endToken ? raw.indexOf(endToken, safeStart) : -1;
+      const safeEnd = endIndex >= 0 ? endIndex : raw.length;
+      return raw.slice(safeStart, safeEnd).trim();
+    };
+
+    const renderSection = ({ title, subtitle, markdown }, parser) => {
+      const section = document.createElement('section');
+      section.className = 'card';
+      const head = document.createElement('div');
+      head.className = 'section-head';
+      const h2 = document.createElement('h2');
+      h2.textContent = title;
+      head.appendChild(h2);
+      if (subtitle) {
+        const pill = document.createElement('span');
+        pill.className = 'pill';
+        pill.textContent = subtitle;
+        head.appendChild(pill);
+      }
+      section.appendChild(head);
+      const article = document.createElement('article');
+      if (parser) {
+        article.innerHTML = parser(markdown || '');
+      } else {
+        const pre = document.createElement('pre');
+        pre.textContent = markdown || '';
+        article.appendChild(pre);
+      }
+      section.appendChild(article);
+      return section;
+    };
+
+    const pageConfig = {{CONFIG}};
+
+    const build = async () => {
+      const root = document.getElementById('root');
+      root.innerHTML = '';
+
+      const header = document.createElement('header');
+      const hero = document.createElement('div');
+      hero.className = 'hero';
+      hero.innerHTML = `
+        <span class="eyebrow">COVID-19 | Inequality & Impact</span>
+        <h1>${pageConfig.title}</h1>
+        <p class="lede">${pageConfig.subtitle}</p>
+        <nav>
+          <a class="nav-chip" href="index.html">Home</a>
+          <a class="nav-chip" href="introduction.html">Introduction</a>
+          <a class="nav-chip" href="data-summary.html">Data Summary</a>
+          <a class="nav-chip" href="hypothesis-1.html">Hypothesis 1</a>
+          <a class="nav-chip" href="hypothesis-2.html">Hypothesis 2</a>
+          <a class="nav-chip" href="results.html">Results</a>
+          <a class="nav-chip" href="conclusion.html">Conclusion</a>
+        </nav>
+        <div class="status" id="load-status">Loading…</div>
+      `;
+      header.appendChild(hero);
+      root.appendChild(header);
+
+      const main = document.createElement('main');
+      root.appendChild(main);
+
+      let parseFn = null;
+      try {
+        await loadScriptFallback([
+          'https://unpkg.com/marked/marked.min.js',
+          'https://cdn.jsdelivr.net/npm/marked/marked.min.js'
+        ]);
+        if (window.marked) {
+          window.marked.setOptions({ breaks: true, gfm: true, headerIds: true, mangle: false });
+          parseFn = (md) => window.marked.parse(md);
+        }
+      } catch (e) {
+        const status = document.getElementById('load-status');
+        if (status) status.textContent = 'Parser failed to load; showing plain text.';
+      }
+
+      fetch('Reseach.md', { cache: 'no-cache' })
+        .then((res) => {
+          if (!res.ok) throw new Error('Could not load markdown');
+          return res.text();
+        })
+        .then((raw) => {
+          const status = document.getElementById('load-status');
+          if (status) status.remove();
+
+          const mdSlice = sliceMarkdown(raw, pageConfig.start, pageConfig.end);
+          const section = renderSection({ title: pageConfig.bodyTitle, subtitle: pageConfig.bodySubtitle, markdown: mdSlice }, parseFn);
+          main.appendChild(section);
+        })
+        .catch((err) => {
+          const status = document.getElementById('load-status');
+          if (status) status.textContent = 'Unable to load Reseach.md';
+          const alert = document.createElement('div');
+          alert.className = 'alert';
+          alert.textContent = 'Start a server in this folder (e.g., python -m http.server 8000) and ensure Reseach.md is present.';
+          const detail = document.createElement('div');
+          detail.className = 'status';
+          detail.textContent = `Error: ${err.message}`;
+          hero.appendChild(alert);
+          hero.appendChild(detail);
+        });
+    };
+
+    window.addEventListener('DOMContentLoaded', build);
+  </script>
+</body>
+</html>
