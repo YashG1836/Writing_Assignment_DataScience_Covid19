@@ -25,12 +25,21 @@
     .nav-chip:hover{transform:translateY(-2px);box-shadow:0 12px 30px rgba(0,0,0,0.32),0 0 0 1px var(--border),0 8px 26px var(--glow);border-color:rgba(92,225,230,0.4)}
     main{max-width:1180px;margin:0 auto 80px;padding:0 20px 24px}
     header.show nav,header:hover nav{max-height:480px;opacity:1;pointer-events:auto;transform:translateY(0)}
-    section.card{background:linear-gradient(150deg,rgba(18,27,46,0.95),rgba(12,18,33,0.92));border:1px solid var(--border);border-radius:18px;padding:24px;box-shadow:0 22px 48px rgba(0,0,0,0.38),0 0 0 1px rgba(255,255,255,0.02)}
+    section.card{background:linear-gradient(150deg,rgba(18,27,46,0.95),rgba(12,18,33,0.92));border:1px solid var(--border);border-radius:18px;padding:26px;box-shadow:0 22px 48px rgba(0,0,0,0.38),0 0 0 1px rgba(255,255,255,0.02)}
     .section-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:12px;border-bottom:1px solid var(--border);padding-bottom:8px}
     .section-head h2{margin:0;font-size:21px;letter-spacing:-.01em}
     .pill{padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.05);color:var(--muted);font-size:13px;border:1px solid var(--border)}
-    article{line-height:1.6;color:var(--text);overflow-x:auto}
+    article{line-height:1.72;color:var(--text);overflow-x:auto}
     article p{color:var(--muted)}
+    article h1,article h2,article h3,article h4,article h5{color:#f3f7ff;line-height:1.25;margin-top:1.25em;margin-bottom:.45em;letter-spacing:-.01em}
+    article h1{font-size:clamp(1.95rem,2.7vw,2.35rem)}
+    article h2{font-size:clamp(1.55rem,2.05vw,1.85rem)}
+    article h3{font-size:clamp(1.3rem,1.6vw,1.5rem)}
+    article h4{font-size:clamp(1.12rem,1.35vw,1.24rem)}
+    article h5{font-size:1rem;font-weight:700}
+    article ul,article ol{padding-left:1.35rem}
+    article li{margin:.28rem 0;color:var(--muted)}
+    article hr{border:none;border-top:1px solid var(--border);margin:1.1rem 0}
     pre{background:#0c1529;border:1px solid var(--border);border-radius:12px;padding:14px;overflow-x:auto;color:#e5e7eb;font-size:13px;line-height:1.5}
     code{font-family:'SFMono-Regular',Consolas,Menlo,monospace}
     details.code-toggle{border:1px solid var(--border);background:rgba(255,255,255,.04);border-radius:12px;margin:12px 0;padding:0 12px}
@@ -50,10 +59,27 @@
   <div id="root"></div>
   <script>
     const loadScriptFallback=(urls)=>new Promise((resolve,reject)=>{let i=0;const next=()=>{if(i>=urls.length)return reject(new Error('scripts failed'));const s=document.createElement('script');s.src=urls[i++];s.onload=()=>resolve();s.onerror=next;document.head.appendChild(s);};next();});
-    const sliceMarkdown=(raw,startToken,endToken)=>{if(!raw)return'';const si=startToken?raw.indexOf(startToken):0;const ss=si>=0?si:0;const ei=endToken?raw.indexOf(endToken,ss):-1;const se=ei>=0?ei:raw.length;return raw.slice(ss,se).trim();};
+    const sliceMarkdownByLines=(raw,startLine,endLine)=>{
+      if(!raw)return'';
+      const lines=raw.split('\n');
+      const start=Math.max(1,startLine||1);
+      const end=endLine&&endLine>0?Math.min(endLine,lines.length):lines.length;
+      return lines.slice(start-1,end).join('\n').trim();
+    };
+    const setActiveNav=()=>{
+      const current=(window.location.pathname.split('/').pop()||'index.html').toLowerCase();
+      document.querySelectorAll('.nav-chip').forEach((chip)=>{
+        const href=(chip.getAttribute('href')||'').toLowerCase();
+        if(href===current){
+          chip.style.borderColor='rgba(92,225,230,0.7)';
+          chip.style.boxShadow='0 0 0 1px rgba(92,225,230,0.28) inset';
+          chip.style.background='linear-gradient(135deg, rgba(92,225,230,0.24), rgba(124,93,255,0.18))';
+        }
+      });
+    };
     const wrapCodeBlocks=(article)=>{article.querySelectorAll('pre').forEach((pre)=>{const details=document.createElement('details');details.className='code-toggle';const summary=document.createElement('summary');summary.textContent='Show code';details.appendChild(summary);details.appendChild(pre.cloneNode(true));details.addEventListener('toggle',()=>{summary.textContent=details.open?'Hide code':'Show code';});pre.replaceWith(details);});};
-    const renderSection=({title,subtitle,markdown},parser)=>{const section=document.createElement('section');section.className='card';const head=document.createElement('div');head.className='section-head';const h2=document.createElement('h2');h2.textContent=title;head.appendChild(h2);if(subtitle){const pill=document.createElement('span');pill.className='pill';pill.textContent=subtitle;head.appendChild(pill);}section.appendChild(head);const article=document.createElement('article');if(parser){article.innerHTML=parser(markdown||'');}else{const pre=document.createElement('pre');pre.textContent=markdown||'';article.appendChild(pre);}wrapCodeBlocks(article);section.appendChild(article);return section;};
-    const pageConfig={title:'Introduction',subtitle:'Context and framing of the COVID-19 inequality investigation.',bodyTitle:'Introduction',bodySubtitle:'Scope, datasets, and approach',start:'',end:'## 1) Give a summary of the data along with visual aids'};
+    const renderSection=({title,subtitle,markdown},parser)=>{const section=document.createElement('section');section.className='card';const head=document.createElement('div');head.className='section-head';const h2=document.createElement('h2');h2.textContent=title;head.appendChild(h2);if(subtitle){const pill=document.createElement('span');pill.className='pill';pill.textContent=subtitle;head.appendChild(pill);}section.appendChild(head);const article=document.createElement('article');if(parser){article.innerHTML=parser(markdown||'');wrapCodeBlocks(article);}else{const fallback=document.createElement('div');fallback.style.whiteSpace='pre-wrap';fallback.style.color='var(--muted)';fallback.textContent=markdown||'';article.appendChild(fallback);}section.appendChild(article);return section;};
+    const pageConfig={title:'Introduction',subtitle:'Context and framing of the COVID-19 inequality investigation.',bodyTitle:'Introduction',bodySubtitle:'Scope, datasets, and approach',startLine:1,endLine:9};
     const build=async()=>{
       const root=document.getElementById('root');root.innerHTML='';
       const header=document.createElement('header');const hero=document.createElement('div');hero.className='hero';hero.innerHTML=`
@@ -70,11 +96,12 @@
         <div class="status" id="load-status">Loading…</div>
       `;header.appendChild(hero);root.appendChild(header);
       const spacer=document.createElement('div');spacer.className='header-spacer';root.appendChild(spacer);
+      setActiveNav();
       const watermark=document.createElement('div');watermark.className='watermark';watermark.textContent='YG';root.appendChild(watermark);
       const main=document.createElement('main');root.appendChild(main);
       const headerEl=header;let lastY=0,upAccum=0,downAccum=0;const syncNav=()=>{const y=window.scrollY;const delta=y-lastY;if(y<40){headerEl.classList.add('show');headerEl.classList.remove('hidden');upAccum=0;downAccum=0;}else{if(delta>0){downAccum+=delta;upAccum=0;}else if(delta<0){upAccum-=delta;downAccum=0;}if(downAccum>14){headerEl.classList.add('hidden');headerEl.classList.remove('show');}if(upAccum>26){headerEl.classList.add('show');headerEl.classList.remove('hidden');}}lastY=y;spacer.style.height=`${headerEl.offsetHeight}px`;};window.addEventListener('scroll',syncNav,{passive:true});window.addEventListener('resize',()=>spacer.style.height=`${headerEl.offsetHeight}px`);syncNav();
       let parseFn=null;try{await loadScriptFallback(['https://unpkg.com/marked/marked.min.js','https://cdn.jsdelivr.net/npm/marked/marked.min.js']);if(window.marked){window.marked.setOptions({breaks:true,gfm:true,headerIds:true,mangle:false});parseFn=(md)=>window.marked.parse(md);}}catch(e){const status=document.getElementById('load-status');if(status)status.textContent='Parser failed to load; showing plain text.';}
-      fetch('Reseach.md',{cache:'no-cache'}).then(res=>{if(!res.ok)throw new Error('Could not load markdown');return res.text();}).then(raw=>{const status=document.getElementById('load-status');if(status)status.remove();const mdSlice=sliceMarkdown(raw,pageConfig.start,pageConfig.end);const section=renderSection({title:pageConfig.bodyTitle,subtitle:pageConfig.bodySubtitle,markdown:mdSlice},parseFn);main.appendChild(section);}).catch(err=>{const status=document.getElementById('load-status');if(status)status.textContent='Unable to load Reseach.md';const alert=document.createElement('div');alert.className='alert';alert.textContent='Start a server in this folder (e.g., python -m http.server 8000) and ensure Reseach.md is present.';const detail=document.createElement('div');detail.className='status';detail.textContent=`Error: ${err.message}`;hero.appendChild(alert);hero.appendChild(detail);});
+      fetch('Reseach.md',{cache:'no-cache'}).then(res=>{if(!res.ok)throw new Error('Could not load markdown');return res.text();}).then(raw=>{const status=document.getElementById('load-status');if(status)status.remove();const mdSlice=sliceMarkdownByLines(raw,pageConfig.startLine,pageConfig.endLine);const section=renderSection({title:pageConfig.bodyTitle,subtitle:pageConfig.bodySubtitle,markdown:mdSlice},parseFn);main.appendChild(section);}).catch(err=>{const status=document.getElementById('load-status');if(status)status.textContent='Unable to load Reseach.md';const alert=document.createElement('div');alert.className='alert';alert.textContent='Start a server in this folder (e.g., python -m http.server 8000) and ensure Reseach.md is present.';const detail=document.createElement('div');detail.className='status';detail.textContent=`Error: ${err.message}`;hero.appendChild(alert);hero.appendChild(detail);});
     };
     window.addEventListener('DOMContentLoaded',build);
   </script>

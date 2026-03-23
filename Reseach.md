@@ -1,49 +1,61 @@
-Introduction
+ 
+ 
+This notebook presents a data-driven analysis of the COVID-19 pandemic using a combination of global and India-specific datasets. The analysis starts with mostly raw, imperfect public data and examines how COVID-19 outcomes varied across countries and across Indian states, while accounting for reporting differences and structural factors.
 
-This notebook presents a data-driven analysis of the COVID-19 pandemic using a combination of global and India-specific datasets. Starting from mostly raw and imperfect data collected from multiple public sources, the analysis explores how COVID-19 outcomes varied across countries and across Indian states, while carefully accounting for reporting differences and structural factors.
+The study begins with an exploratory summary of the datasets using descriptive statistics and visualizations, then formulates two testable hypotheses: one comparing India's outcomes with global peers, and another examining variation in reported case fatality rates across Indian states. Each hypothesis is quantified using clearly defined metrics such as cases per million, deaths per million, and case fatality rate (CFR), and is evaluated through targeted visual and statistical comparisons.
 
-The study begins with an exploratory summary of the datasets using visualizations and descriptive statistics, and then formulates two decidable hypotheses: one comparing India’s outcomes with global peers, and another examining variations in reported case fatality rates across Indian states. Each hypothesis is quantified using clearly defined metrics such as cases per million, deaths per million, and case fatality rates, and evaluated using targeted visualizations and statistical comparisons.
+The objective is not only to identify patterns, but to show how careful data analysis and contextual reasoning are necessary to draw reliable conclusions from complex real-world data.
 
-The objective is not only to identify patterns, but to demonstrate how thoughtful data analysis and contextual reasoning are necessary to draw reliable conclusions from complex real-world data.
-
-...
 
 ```python
-# All the Imports 
-Libraries used : 
 
-1) import pandas as pd
-2) import matplotlib.pyplot as plt
-3) import geopandas as gpd
-4) import plotly.express as px
-5) import json
-5) import seaborn as sns
-6) from sklearn.manifold import TSNE
-7) from sklearn.preprocessing import StandardScaler
+# Core imports and visual defaults
+import json
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import plotly.express as px
+import geopandas as gpd
+from sklearn.manifold import TSNE
+from sklearn.preprocessing import StandardScaler
+
+sns.set_theme(style="whitegrid")
+plt.rcParams.update({
+    "figure.figsize": (10, 6),
+    "axes.titlesize": 14,
+    "axes.labelsize": 12,
+    "xtick.labelsize": 10,
+    "ytick.labelsize": 10,
+    "legend.fontsize": 10
+})
+
 ```
+
+## 1) Data Summary with Visual Aids
+
+This section summarizes the datasets used in the study and explains what each one contributes to the overall analysis. In simple terms, the data summary tells us what information is available, how it is structured, and why it is relevant before we test any hypothesis.
+
+It combines health, social, and economic indicators so that later comparisons are based on context rather than raw counts alone. The visual aids provide a quick, interpretable view of trends, variation across regions, and potential relationships between structural factors and COVID-19 outcomes.
 
 ### Data Sources and Dataset Overview
 
-This report combines multiple publicly available datasets to study the unequal impact of COVID-19 across countries, Indian states, and socioeconomic groups. Rather than relying on a single source, the analysis integrates epidemiological data with structural indicators such as healthcare capacity, education, income, employment, digital access, and environmental quality. Together, these datasets allow us to move beyond raw case counts and explore why the pandemic affected regions and populations differently.
+This report combines multiple public datasets to study the unequal impact of COVID-19 across countries, Indian states, and socioeconomic groups. Rather than relying on a single source, the analysis integrates epidemiological indicators with structural variables such as healthcare capacity, education, income, employment, digital access, and environmental quality. Together, these datasets help move beyond raw case counts and explain why the pandemic affected regions and populations differently.
 
 #### 1. COVID-19 Core Epidemiological Data
-##### -> India: State-wise Time Series Data
+##### India: State-wise Time-Series Data
 
 Source: Government of India (MyGov / MoHFW)
 
-##### This dataset provides daily state-level COVID-19 statistics for India, including:
+This dataset provides state-level COVID-19 statistics for India, including:
 
-* Confirmed cases
-
-* Active cases
-
-* Recoveries
-
-* Deaths
-
+- Confirmed cases
+- Active cases
+- Recoveries
+- Deaths
 
 
 ```python
+
 df = pd.read_csv("india_covid_statewise.csv")
 
 # Remove % sign and convert to float
@@ -104,6 +116,7 @@ state_fix = {
 df["CFR (%)"] = (df["Deaths"] / df["Total Cases"]) * 100
 df["State_geo"] = df["State/UTs"].replace(state_fix)
 df.head()
+
 ```
 
 
@@ -249,7 +262,7 @@ plt.show()
 
 
     
-![png](output_5_0.png)
+![png](Reseach_files/Reseach_6_0.png)
     
 
 
@@ -268,44 +281,41 @@ plt.show()
 
 
     
-![png](output_6_0.png)
+![png](Reseach_files/Reseach_7_0.png)
     
 
 
-##### -> Global: Country-wise COVID-19 Data
+##### Global: Country-wise COVID-19 Data
 
 Source: Our World in Data
 
-##### The global dataset offers standardized, cross-country COVID-19 indicators such as:
+This dataset provides standardized cross-country indicators such as:
 
-* Confirmed cases per million
+- Cases per million
+- Deaths per million
+- Testing rates
+- Vaccination coverage
+- Government stringency index
 
-* Deaths per million
-
-* Testing rates
-
-* Vaccination coverage
-
-* Government stringency index
-
-This dataset enables international comparisons and helps contextualize India’s experience within the global pandemic.
-
+It supports international comparison and helps place India's trajectory in global context.
 
 
 ```python
-# Optional: better visuals
-sns.set(style="whitegrid")
-
 # Load dataset
 df = pd.read_csv("owid-covid-data.csv")
 
-# Convert date
+# Keep country rows only (exclude aggregates like World/Asia)
+df = df[df["iso_code"].str.len() == 3].copy()
+
+# Convert date and build latest snapshot per country
 df["date"] = pd.to_datetime(df["date"])
+latest = df.sort_values("date").groupby("location").tail(1)
+
+# Per-million metrics
 latest["cases_per_million"] = (latest["total_cases"] / latest["population"]) * 1_000_000
 latest["deaths_per_million"] = (latest["total_deaths"] / latest["population"]) * 1_000_000
 
-df.tail()
-
+latest[["location", "cases_per_million", "deaths_per_million"]].head()
 ```
 
 
@@ -505,56 +515,63 @@ plt.show()
 
 
     
-![png](output_9_0.png)
+![png](Reseach_files/Reseach_10_0.png)
     
 
 
 
 ```python
 india_ts = df[df["location"] == "India"].set_index("date")
+global_ts = (
+    df.groupby("date")["new_cases"]
+    .sum()
+    .rolling(7, min_periods=1)
+    .mean()
+    .rename("global_new_cases")
+)
 
-plt.figure(figsize=(12,6))
-plt.plot(global_ts, label="World", alpha=0.6)
-plt.plot(india_ts["new_cases"], label="India", linewidth=2)
+plt.figure(figsize=(12, 6))
+plt.plot(global_ts, label="World (7-day mean)", alpha=0.7)
+plt.plot(
+    india_ts["new_cases"].rolling(7, min_periods=1).mean(),
+    label="India (7-day mean)",
+    linewidth=2
+)
 
 plt.xlabel("Date")
 plt.ylabel("Daily New Cases")
 plt.title("India vs Global COVID-19 Waves")
 plt.legend()
 plt.yscale("log")
+plt.tight_layout()
 plt.show()
-
 ```
 
 
     
-![png](output_10_0.png)
+![png](Reseach_files/Reseach_11_0.png)
     
 
 
 
 ```python
-# Select only countries (remove aggregates)
-tsne_df = latest.copy()
+# Select only countries and keep rows with required fields
+tsne_df = latest.dropna(subset=[
+    "population", "cases_per_million", "deaths_per_million", "continent", "location"
+]).copy()
 
-# Drop rows with missing population (safety)
-tsne_df = tsne_df.dropna(subset=["population"])
-features = tsne_df[
-    ["cases_per_million", "deaths_per_million"]
-].dropna()
-features = tsne_df[["cases_per_million", "deaths_per_million"]].dropna()
-
+features = tsne_df[["cases_per_million", "deaths_per_million"]]
 X = StandardScaler().fit_transform(features)
 
 tsne = TSNE(n_components=2, perplexity=25, random_state=42)
 X_tsne = tsne.fit_transform(X)
 
-plt.figure(figsize=(10,7))
+plt.figure(figsize=(10, 7))
 
-continents = tsne_df.loc[features.index, "continent"].unique()
+continents = tsne_df["continent"].unique()
 
 for cont in continents:
-    idx = tsne_df.loc[features.index, "continent"] == cont
+    idx = tsne_df["continent"] == cont
     plt.scatter(
         X_tsne[idx, 0],
         X_tsne[idx, 1],
@@ -562,56 +579,40 @@ for cont in continents:
         alpha=0.6,
         label=cont
     )
-india_idx = tsne_df.loc[features.index, "location"] == "India"
 
-# plt.scatter(
-#     X_tsne[india_idx, 0],
-#     X_tsne[india_idx, 1],
-#     color="red",
-#     s=220,
-#     edgecolor="black",
-#     linewidth=1.5,
-#     label="India"
-# )
 plt.title(
     "Countries Grouped by COVID-19 Impact\n(Cases & Deaths per Million)",
     fontsize=14
 )
-
-plt.xlabel("← Similar COVID impact")
-plt.ylabel("Similar COVID impact →")
+plt.xlabel("t-SNE Component 1")
+plt.ylabel("t-SNE Component 2")
 
 plt.legend(
     title="Region",
     bbox_to_anchor=(1.05, 1),
     loc="upper left"
-)
+ )
 
 plt.tight_layout()
 plt.show()
-
 ```
 
 
     
-![png](output_11_0.png)
+![png](Reseach_files/Reseach_12_0.png)
     
 
 
 #### 2. Healthcare Infrastructure Availability
-##### -> India: Health Infrastructure
+##### India: Health Infrastructure
 
 Sources: National Health Profile (NHP), NFHS
 
-##### Healthcare capacity is a key determinant of COVID-19 outcomes. This dataset provides state-level indicators including:
+Healthcare capacity is a key determinant of COVID-19 outcomes. This dataset provides state-level indicators including:
 
-* Hospitals per 1,000 population
-
-* Spatial distribution of hospitals across states
-
-* Public health infrastructure 
-
-
+- Hospital counts
+- Beds per 1,000 population
+- Spatial distribution of healthcare facilities
 
 
 ```python
@@ -775,7 +776,7 @@ plt.show()
 
 
     
-![png](output_14_0.png)
+![png](Reseach_files/Reseach_15_0.png)
     
 
 
@@ -793,26 +794,22 @@ plt.show()
 
 
     
-![png](output_15_0.png)
+![png](Reseach_files/Reseach_16_0.png)
     
 
 
 #### 3. Education, Income, and Structural Advantage
-##### -> India: State-wise Socioeconomic Indicators
+##### India: State-wise Socioeconomic Indicators
 
 Sources: Census of India, Reserve Bank of India, NITI Aayog
 
-##### This dataset captures long-term structural characteristics of Indian states:
+This dataset captures long-term structural characteristics of Indian states, including:
 
-* Literacy rate
+- Literacy rate
+- Per-capita NSDP
+- Urbanization share
 
-* Per-capita Net State Domestic Product (NSDP)
-
-* Urbanization percentage
-
-These indicators are treated as pre-existing conditions that shaped a state’s resilience to the pandemic.
-
-
+These indicators are treated as pre-existing conditions that may shape a state's resilience during the pandemic.
 
 
 ```python
@@ -828,7 +825,7 @@ plt.show()
 
 
     
-![png](output_17_0.png)
+![png](Reseach_files/Reseach_18_0.png)
     
 
 
@@ -864,7 +861,7 @@ plt.show()
 
 
     
-![png](output_18_1.png)
+![png](Reseach_files/Reseach_19_1.png)
     
 
 
@@ -885,7 +882,7 @@ plt.show()
 
 
     
-![png](output_19_0.png)
+![png](Reseach_files/Reseach_20_0.png)
     
 
 
@@ -903,25 +900,21 @@ plt.show()
 
 
     
-![png](output_20_0.png)
+![png](Reseach_files/Reseach_21_0.png)
     
 
 
 #### 4. Inequality and Daily-Wage Employment Impact
-##### -> India: Employment Shock
+##### India: Employment Shock
 
 Source: CMIE Consumer Pyramids
 
-##### This dataset captures the economic shock of COVID-19, particularly on informal workers:
+This dataset captures the economic shock of COVID-19, especially for informal and daily-wage workers, including:
 
-* Unemployment rates
+- Unemployment rates
+- Employment disruption over time
 
-* Informal employment loss
- 
-
-It highlights how the pandemic affected livelihoods unevenly, often more severely than health outcomes.
-
-
+It highlights how livelihood impacts were often uneven and, in many regions, more severe than headline health indicators suggest.
 
 
 ```python
@@ -973,7 +966,7 @@ plt.show()
 
 
     
-![png](output_23_0.png)
+![png](Reseach_files/Reseach_24_0.png)
     
 
 
@@ -994,123 +987,88 @@ plt.show()
 
 
     
-![png](output_24_0.png)
+![png](Reseach_files/Reseach_25_0.png)
     
 
 
-### >>> Further research on more topic like education disparity and impact on enviornment can be made but above topics are enough for us set a hyposthesis and quantify it!
-
-#### 5. Digital Divide and Education Access
-##### -> India: Internet Access
-
-Sources: NSSO, TRAI
-
-##### Digital access became critical during lockdowns. This dataset includes:
-
-* Internet penetration (state-wise)
-
-* Rural vs urban access gaps
-
-* These indicators are used to study online education access and exclusion.
-
-##### Planned visualizations:
-
-* Internet penetration by state
-
-* Rural-urban digital divide charts
-
-* Correlation with education loss indicators 
-
-#### 6. Environmental Data: The Lockdown Paradox
-##### -> India: Air Quality Indicators
-
-Source: Central Pollution Control Board (CPCB)
-
-##### This dataset provides daily city-level environmental data, including:
-
-* Air Quality Index (AQI)
-
-* PM2.5 concentrations
-
-It is used to study the temporary environmental improvements during lockdowns and who benefited most from them.
-
-##### Planned visualizations:
-
-* AQI time-series (pre-lockdown vs lockdown)
-
-* City-wise AQI reduction comparisons
-
-* Before-after pollution plots
-
-Together, these datasets form a multi-layered view of the pandemic, combining health outcomes with social, economic, and environmental dimensions. The following sections build on this data foundation to formulate hypotheses, quantify relationships, and evaluate them using statistical and visual analysis.
-
-## ...
-
-## ...
+Further work could extend this analysis to education disparity and environmental outcomes, but the current scope is sufficient to define, quantify, and test the two hypotheses below.
 
 
-### Hypothesis 1 (India vs Global Comparison)
-India’s COVID-19 mortality per capita was lower than many comparable countries with similar population size or case burden, despite having weaker average healthcare capacity.
 
-#### What this hypothesis is trying to prove
-This hypothesis examines whether India’s observed COVID-19 outcomes, particularly mortality, were disproportionately low relative to its population size and case burden, when compared to other large or highly affected countries (e.g., United States, Brazil, Russia).
 
-#### The motivation is that India:
 
-* Has one of the largest populations globally
 
-* Has limited healthcare capacity per capita
 
-* Experienced large absolute case counts
 
-Yet, official data suggests that deaths per million in India remained lower than in many developed or similarly affected nations.
-This hypothesis does not claim better policy or management outright, but asks whether India’s aggregate outcomes differ systematically from global peers.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### Hypothesis 1: India vs Global Comparison
+
+India's reported COVID-19 deaths per million were lower than many comparable countries, even though India had high case burden and lower average structural capacity (for example, GDP per capita and hospital beds per thousand).
+
+#### What this hypothesis tests
+The goal is to test whether India's reported mortality burden is relatively low in per-capita terms when compared with countries that are either large in population or high in case burden.
+
+#### Why this is relevant
+- India has one of the world's largest populations.
+- India reported large absolute case counts.
+- Structural capacity indicators are lower than in many high-income countries.
+
+If deaths per million are still comparatively low, the pattern is analytically important and worth quantifying explicitly.
 
 #### Datasets used
-
--> owid-covid-data.csv (global country-wise)
-
--> india_covid_statewise.csv (for national aggregation)
+- owid-covid-data.csv (global country-level indicators)
+- india_covid_statewise.csv (state aggregation for India-specific construction checks)
 
 #### Quantification strategy
-
 ##### 1. Primary outcome metrics
-
-* Deaths per million population
-
-* Cases per million population
+- Cases per million
+- Deaths per million
 
 ##### 2. Comparison groups
-
-* India
-
-* High-population countries (e.g., USA, Brazil)
-
-* High-case-burden countries (top 10 globally by cases)
+- India
+- Top countries by case burden
+- Top countries by population
 
 #### Planned analysis
 
-##### 1. Compute:
+##### 1. Compute
+- Cases per million
+- Deaths per million
 
-* Cases per million
+##### 2. Visual comparisons
+- Scatter plot: cases per million vs deaths per million
+- Highlight India against comparable countries
+- Bar chart: deaths per million for selected peers
 
-* Deaths per million for India and selected countries
-
-##### 2. Visual comparisons:
-
-* Scatter plot: cases per million vs deaths per million
-
-* Highlight India against other countries
-
-* Bar chart: deaths per million for selected countries
-
-##### 3. Optional statistical framing:
-
-* Rank India’s deaths per million percentile among:
-
-* top-case countries
-
-* top-population countries
+##### 3. Statistical framing
+- India's percentile rank in deaths per million
+- India's numeric rank among countries in each peer group
 
 ### Step 1: Prepare a COUNTRY-LEVEL COVID DATASET (Global)
 
@@ -1275,43 +1233,28 @@ india_population = {
     "Lakshadweep": 64473,
     "Andaman and Nicobar Islands": 380581
 }
-india_cases_per_million = (
-    india_total_cases / india_population_total
-) * 1e6
 
-india_deaths_per_million = (
-    india_total_deaths / india_population_total
-) * 1e6
+india_population_total = sum(india_population.values())
+india_cases_per_million = (india_total_cases / india_population_total) * 1e6
+india_deaths_per_million = (india_total_deaths / india_population_total) * 1e6
 
 owid = pd.read_csv("owid-covid-data.csv")
 india_owid = owid[owid["location"] == "India"].copy()
 
-india_population_owid = (
-    india_owid["population"]
-    .dropna()
-    .iloc[-1]
-)
-india_gdp_per_capita = (
-    india_owid["gdp_per_capita"]
-    .dropna()
-    .iloc[-1]
-)
-india_hospital_beds = (
-    india_owid["hospital_beds_per_thousand"]
-    .dropna()
-    .iloc[-1]
-)
+india_population_owid = india_owid["population"].dropna().iloc[-1]
+india_gdp_per_capita = india_owid["gdp_per_capita"].dropna().iloc[-1]
+india_hospital_beds = india_owid["hospital_beds_per_thousand"].dropna().iloc[-1]
+
 india_country_row = pd.DataFrame([{
     "location": "India",
-    "population": india_population_owid,   # from OWID
-    "total_cases_per_million": india_cases_per_million,  # from state aggregation
+    "population": india_population_owid,
+    "total_cases_per_million": india_cases_per_million,
     "total_deaths_per_million": india_deaths_per_million,
     "gdp_per_capita": india_gdp_per_capita,
     "hospital_beds_per_thousand": india_hospital_beds
 }])
 
 india_country_row
-
 ```
 
 
@@ -1376,8 +1319,6 @@ global_df[global_df["location"] == "India"]
 ```
 
 
-
-
 <div>
 <style scoped>
     .dataframe tbody tr th:only-of-type {
@@ -1419,12 +1360,11 @@ global_df[global_df["location"] == "India"]
 </div>
 
 
-
 ### Step 3: Define Comparison Groups
 
-#### We compare India against two fair peer groups:
-* Group A: Top 10 countries by total cases per million
-* Group B: Top 10 countries by population
+India is compared against two peer groups:
+- Group A: Top 10 countries by total cases per million
+- Group B: Top 10 countries by population
 
 
 ```python
@@ -1438,6 +1378,9 @@ top_population = global_df.sort_values(
     "population", ascending=False
 ).head(10)
 
+# India row
+india_global = global_df[global_df["location"] == "India"]
+
 # Combine both groups + India
 comparison_df = pd.concat([
     top_cases,
@@ -1446,7 +1389,6 @@ comparison_df = pd.concat([
 ]).drop_duplicates(subset="location")
 
 comparison_df
-
 ```
 
 
@@ -1713,12 +1655,9 @@ plt.show()
 
 ```
 
-
     
-![png](output_44_0.png)
+![png](Reseach_files/Reseach_45_0.png)
     
-
-
 
 ```python
 plt.figure(figsize=(10,5))
@@ -1737,16 +1676,12 @@ plt.show()
 
 ```
 
-
     
-![png](output_45_0.png)
+![png](Reseach_files/Reseach_46_0.png)
     
-
-
 ### Step 6: Statistical Framing
 
 #### 6.1 Percentile Rank of India
-
 
 ```python
 india_dpm = india_country_row["total_deaths_per_million"].values[0]
@@ -1808,83 +1743,66 @@ print(f"India ranks {int(india_case_rank)} out of {total_countries} countries in
 
 ### Step 7: Final Result Statement
 
-Using aggregated Indian state-level data and global country-level data, this analysis finds that India’s reported COVID-19 mortality burden was comparatively lower than that of many countries worldwide, despite high infection exposure. India ranks lower in deaths per million than a significant proportion of countries globally and falls below the global distribution when compared against nations with similar or higher case rates, as shown through scatter plots, bar charts, and global rankings. At the same time, India’s GDP per capita and hospital beds per thousand are below global medians, indicating that these outcomes occurred despite structural healthcare and economic constraints.
+Using global country-level data and India-focused checks, the analysis indicates that India's reported deaths per million are lower than many comparator countries, despite high case burden and weaker structural capacity indicators. Across scatter plots, peer-group bar comparisons, and percentile/rank summaries, India appears on the lower side of the global mortality-per-capita distribution.
 
-Taken together, the consistency across visual comparisons, mortality and case-rate rankings, and contextual indicators provides sufficient evidence to support the hypothesis that India’s per-capita COVID-19 mortality outcomes were relatively lower in the global context. These conclusions are based on officially reported data available from public international and national sources at the time of analysis and should be interpreted with the understanding that reporting practices and data completeness vary across countries.
-...
+This supports Hypothesis 1 under the scope of officially reported data. At the same time, cross-country differences in testing intensity, reporting practices, and attribution standards should be kept in mind when interpreting the result.
 
-Ps: This result reflects reported data and does not rule out under-reporting.
+Note: This conclusion reflects reported data and does not rule out under-reporting.
 
-### Data Sources and Acknowledgements 
-* Global COVID-19 data: Our World in Data (OWID)
-* India state-level COVID-19 data: Government of India (MyGov / MoHFW)
-* Population, GDP, healthcare indicators: OWID, World Bank
-* Analysis, visualization, and structuring support: Python (pandas, matplotlib), Jupyter Notebook
-* Conceptual guidance and methodological assistance: OpenAI language models and agents
+### Data Sources and Acknowledgements
+- Global COVID-19 data: Our World in Data (OWID)
+- India state-level COVID-19 data: Government of India (MyGov / MoHFW)
+- Population, GDP, and healthcare indicators: OWID and World Bank
+- Analysis stack: Python (pandas, matplotlib, seaborn, scikit-learn), Jupyter Notebook
 
-## ...
 
-### Hypothesis 2 (State vs State Comparison within India)
-Indian states with higher income, literacy, and healthcare capacity exhibit higher reported COVID-19 case fatality rates due to greater exposure, older population structures, and more complete detection and reporting of cases and deaths, while lower-income states tend to exhibit artificially lower CFRs due to under-detection.
 
-#### What this hypothesis is trying to prove?
-This hypothesis examines whether differences in reported COVID-19 case fatality rates (CFR) across Indian states are driven by differences in reporting and detection, rather than by weaker healthcare facilities.
 
-#### Specifically, it tests whether states with:
 
-* Higher income and literacy
 
-* Better healthcare infrastructure
 
-tend to show higher reported CFRs because deaths and cases are recorded more completely, while states with fewer facilities and lower income show lower reported CFRs mainly due to under-reporting, not better health outcomes.
+
+
+### Hypothesis 2: State-Level Comparison within India
+
+Indian states with higher income, literacy, and healthcare capacity may show higher *reported* COVID-19 CFR because they tend to have stronger detection and reporting systems and, in several cases, higher exposure and older age structure. In contrast, some lower-capacity states may show lower reported CFR partly due to under-detection.
+
+#### What this hypothesis tests
+This hypothesis tests whether observed differences in state-level CFR are linked more to structural and reporting differences than to healthcare weakness alone.
+
+#### Specifically, it examines whether states with:
+- Higher income and literacy
+- Better healthcare infrastructure
+
+also tend to report higher CFR due to more complete case and death recording.
 
 #### Datasets used
-
--> india_covid_statewise.csv
-
--> hospital_directory.csv
-
--> HospitalsInIndia.csv
-
--> Literacy_rate.csv
+- india_covid_statewise.csv
+- hospital_directory.csv
+- HospitalsInIndia.csv
+- Literacy_rate.csv
 
 #### Quantification strategy
-
-* Case Fatality Rate (CFR)
-
-* Hospitals per 1,000 population
-
-* Literacy rate
-
-* Per-capita NSDP (if available)
-
-* Control / exposure variable
-
-* Cases per million population
+- Case Fatality Rate (CFR)
+- Hospitals per 1,000 population
+- Literacy rate
+- Per-capita NSDP
+- Cases per million (exposure control)
 
 #### Planned analysis
+##### 1. Compute state-level variables
+- CFR
+- Cases per million
+- Hospitals per 1,000
 
-##### 1. Compute state-level:
+##### 2. Visualizations
+- Scatter: hospitals per 1,000 vs CFR
+- Scatter/box comparisons: literacy and CFR
+- Box plot: CFR in high-income vs low-income states
 
-* CFR
-
-* Cases per million
-
-* Hospitals per 1,000 population
-
-##### 2. Visualizations:
-
-* Scatter plot: hospitals per 1,000 vs CFR
-
-* Scatter plot: literacy rate vs CFR
-
-* Box plot: CFR distribution for high-income vs low-income states
-
-##### 3. Statistical checks:
-
-* Correlation (Pearson / Spearman)
-
-* Comparison of medians across groups
+##### 3. Statistical checks
+- Spearman/Pearson correlation
+- Group-wise median comparisons
 
 ### Step 1: Load and clean state-level COVID data
 
@@ -2387,8 +2305,9 @@ $$
 ```python
 import matplotlib.pyplot as plt
 
-plt.figure(figsize=(8,6))
+filtered = state_df.dropna(subset=["Hospitals_per_1000", "CFR", "State"]).copy()
 
+plt.figure(figsize=(8, 6))
 plt.scatter(
     filtered["Hospitals_per_1000"],
     filtered["CFR"],
@@ -2405,21 +2324,21 @@ for _, row in filtered.iterrows():
         alpha=0.8
     )
 
-plt.xlabel("Hospitals per 1,000 population")
+plt.xlabel("Hospitals per 1,000 Population")
 plt.ylabel("Case Fatality Rate (%)")
-plt.title("Healthcare Capacity vs CFR (Controlled for Exposure)")
+plt.title("Healthcare Capacity vs CFR")
 plt.grid(True)
+plt.tight_layout()
 plt.show()
-
 ```
 
 
     
-![png](output_68_0.png)
+![png](Reseach_files/Reseach_69_0.png)
     
 
 
-This indicates that while raw CFR comparisons are confounded by exposure and reporting differences, greater healthcare capacity is associated with improved survival outcomes when exposure levels are comparable, supporting the hypothesis that structural healthcare availability plays a meaningful role in pandemic outcomes.
+This plot suggests that raw CFR differences cannot be interpreted in isolation. Exposure intensity, reporting quality, and demographic composition are important confounders. Healthcare capacity still appears relevant, but the direction and strength of the relationship should be interpreted jointly with these structural factors.
 
 
 ```python
@@ -2444,7 +2363,7 @@ plt.show()
 
 
     
-![png](output_70_1.png)
+![png](Reseach_files/Reseach_71_1.png)
     
 
 
@@ -2522,7 +2441,7 @@ literacy_cfr_stats
 
 
 
-The box plot and summary statistics show that states with medium and high literacy levels exhibit higher median and mean COVID-19 case fatality rates compared to low-literacy states. This indicates that higher reported CFRs are not necessarily due to weaker healthcare systems, but are more likely driven by better detection and reporting of cases and deaths, as well as differences in demographic structure. In contrast, lower-literacy states show lower observed CFRs, which likely reflect under-reporting rather than superior health outcomes.
+The literacy-group comparison shows that medium- and high-literacy states often report higher CFR than low-literacy states. This does not automatically imply weaker healthcare outcomes in more literate states; it is also consistent with stronger case and death detection, better registration systems, and different demographic risk profiles.
 
 
 ```python
@@ -2551,7 +2470,7 @@ plt.show()
 
 
     
-![png](output_73_1.png)
+![png](Reseach_files/Reseach_74_1.png)
     
 
 
@@ -2623,7 +2542,7 @@ income_cfr_stats
 
 
 
-The box plot and summary statistics indicate that states classified as high-income exhibit a higher median and mean COVID-19 case fatality rate compared to low-income states. This result does not imply weaker healthcare systems in wealthier states. Instead, high-income states also display substantially higher case exposure and more complete detection and reporting of COVID-19 cases and deaths. In contrast, lower-income states likely under-report infections and fatalities, leading to artificially lower observed CFRs. Thus, the income-based CFR difference primarily reflects reporting quality, demographic structure, and exposure intensity rather than inferior healthcare outcomes.
+The income-group comparison indicates higher median and mean reported CFR in higher-income states. This pattern is plausibly linked to stronger reporting coverage and higher measured exposure, rather than a simple income-to-outcome deterioration story. Lower-income states may show artificially low observed CFR where detection and reporting are incomplete.
 
 ### Step 6: Statistical Checks
 
@@ -2799,26 +2718,19 @@ summary_stats[["min", "50%", "max"]]
 
 ### Step 7: Final Result Statement
 
-The state-level analysis demonstrates that differences in COVID-19 fatality rates across Indian states are not random, but are closely tied to underlying structural and demographic factors. While simple scatter plots do not show a monotonic decline in case fatality rates with increasing healthcare capacity, literacy, or income, deeper analysis reveals that this pattern is shaped by exposure levels, age structure, and reporting capacity. States with higher income, literacy, and healthcare availability generally experienced greater infection exposure and more complete detection of cases and deaths, leading to higher reported case fatality rates rather than poorer pandemic management.
+The state-level analysis shows that variation in reported COVID-19 CFR across Indian states is systematic rather than random. Raw plots alone do not establish a simple monotonic relationship between CFR and infrastructure, but group comparisons and correlation checks indicate that exposure, reporting capacity, and structural conditions jointly shape observed outcomes.
 
-In contrast, several lower-income states exhibit lower observed CFRs, which likely reflect under-detection of infections and deaths rather than superior health outcomes. When controlling for comparable levels of exposure and examining distributions across income and literacy groups, the data consistently indicate that healthcare infrastructure, education, and economic development significantly influence how COVID-19 outcomes are recorded and experienced across states. Taken together, the visualizations, group comparisons, and correlation analyses provide sufficient evidence to settle the hypothesis that structural and socioeconomic factors—rather than randomness alone—played a decisive role in shaping state-level COVID-19 fatality patterns in India.
+States with higher income and literacy often report higher CFR, which is consistent with stronger detection/reporting and different demographic exposure profiles. Several lower-capacity states show lower observed CFR, which may partly reflect under-detection rather than better underlying outcomes.
 
-...
+Overall, the evidence supports Hypothesis 2: structural and socioeconomic differences materially influence how pandemic outcomes are observed and reported across states.
 
-Ps: This result reflects reported data and does not rule out under-reporting.
+Note: This conclusion reflects reported data and does not rule out under-reporting.
 
 ## Data Sources and Acknowledgements
-* Global COVID-19 data: Our World in Data (OWID), providing country-level statistics on cases, deaths, testing, vaccination, population, GDP per capita, healthcare capacity, and excess mortality.
-Source: https://ourworldindata.org/covid-cases
-
-* India state-level COVID-19 data: Official data from the Government of India (MyGov / Ministry of Health and Family Welfare).
-
-* Population and socioeconomic indicators (India): Census of India, Reserve Bank of India (RBI), and NITI Aayog, used for literacy rates, per-capita NSDP, and population estimates.
-
-* Healthcare infrastructure data (India): Publicly available hospital directory datasets used to approximate state-level healthcare capacity.
-
-## ...
-
+- Global COVID-19 data: Our World in Data (OWID), including country-level indicators on cases, deaths, testing, vaccination, population, GDP per capita, and healthcare capacity.
+- India state-level COVID-19 data: Government of India (MyGov / Ministry of Health and Family Welfare).
+- Population and socioeconomic indicators: Census of India, Reserve Bank of India (RBI), and NITI Aayog.
+- Healthcare infrastructure data: public hospital directory datasets used for state-level capacity approximations.
 
 ```python
 
