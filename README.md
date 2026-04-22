@@ -10,7 +10,7 @@ The assignment analyzes public COVID-19 data and presents:
 - two hypotheses with analysis and findings
 - concluding insights
 
-Main source content is stored in `Reseach.md`, and section-based HTML pages render selected parts of that content for easier reading.
+Main source content is stored in the repository’s source markdown file (`Reseach.md`), and section-based HTML pages render selected parts of that content for easier reading.
 
 ## Repository Structure
 
@@ -19,13 +19,12 @@ Main source content is stored in `Reseach.md`, and section-based HTML pages rend
 - `data-summary.html` – data summary section
 - `hypothesis-1.html` – first hypothesis analysis
 - `hypothesis-2.html` – second hypothesis analysis
-- `Reseach.md` – full notebook-style write-up used by the section pages
-- `Reseach_files/` and `output_*.png` – generated visual outputs
+- source markdown file and generated image assets – full notebook-style write-up and visual outputs
 - `results.html`, `conclusion.html` – additional exported pages
 
 ## How to View Locally
 
-Because section pages fetch `Reseach.md`, run a local server instead of opening files directly:
+Because section pages fetch the source markdown file, run a local server instead of opening files directly:
 
 ```bash
 cd <repository-root>
@@ -39,3 +38,4 @@ Then open:
 
 - This is a static, assignment-style project (no package manager or build pipeline required).
 - External CDN loading is used for Markdown rendering (`marked`).
+- Some repository files intentionally use the existing `Reseach*` naming.
