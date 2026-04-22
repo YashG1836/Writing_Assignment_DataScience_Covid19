@@ -28,7 +28,7 @@ Main source content is stored in `Reseach.md`, and section-based HTML pages rend
 Because section pages fetch `Reseach.md`, run a local server instead of opening files directly:
 
 ```bash
-cd /home/runner/work/Writing_Assignment_DataScience_Covid19/Writing_Assignment_DataScience_Covid19
+cd <repository-root>
 python -m http.server 8000
 ```
 
